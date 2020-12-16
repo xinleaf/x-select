@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>自定义select</title>
+	<style type="text/css">
+		*{
+			margin: 0;
+			padding: 0;
+		}
+	</style>
+	<link rel="stylesheet" type="text/css" href="./xSelect.css">
+</head>
+<body>
+	<form id="x-form">
+		<input type="text" name="dd">
+		<!-- 自定义下拉框-test -->
+		<div class="x-select-wrap form_item_x" id="jobarea">
+		</div>
+		<!-- 封装select -->
+		<div id="address"></div>
+		<span id="submit-btn">获取值</span>
+	</form>
+</body>
+<script type="text/javascript" src="./xSelect.js"></script>
+<script type="text/javascript">
+var divid = [{
+			"key": "4459281",
+			"value": "测试数据1-得到的为加权平均哦会丢",
+			"divorder": "0"
+		},{
+			"key": "4459281",
+			"value": "测试数据2",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据3",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据4",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据5-说的毒害考虑降低哦啤酒",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据6",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据7",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据8",
+			"divorder": "0"
+		}, {
+			"key": "4459281",
+			"value": "测试数据9",
+			"divorder": "0"
+		}, ];
+var xx  = new Xselect(document.getElementById('address'), {
+	name: 'address',
+	// options: [{text: 'a', value: 'b'}],
+	options: divid,
+	placeholder: '自定义下拉框1',
+	textPop: true,
+	textAlign: 'left',
+	fieldNames: {
+	    text: 'value',
+	    value: 'key',
+	},
+});
+
+var xy = new Xselect(document.getElementById('jobarea'), {
+	name: 'jobarea',
+	// options: [{text: 'a', value: 'b'}],
+	options: divid,
+	placeholder: '自定义下拉框2',
+	textPop: true,
+	initialValue: {
+		value: '4385567',
+	},
+	fieldNames: {
+	    text: 'value',
+	    value: 'key',
+	},
+});
+</script>
+</html>
