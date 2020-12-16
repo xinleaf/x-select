@@ -13,6 +13,7 @@
 <body>
 	<form id="x-form">
 		<input type="text" name="dd">
+		<input type="text" name="aa" value="123" style="display: none">
 		<!-- 自定义下拉框-test -->
 		<div class="x-select-wrap form_item_x" id="jobarea">
 		</div>
@@ -23,7 +24,7 @@
 </body>
 <script type="text/javascript" src="./xSelect.js"></script>
 <script type="text/javascript">
-var divid = [{
+	var divid = [{
 			"key": "445928232",
 			"value": "测试数据1-得到的为加权平均哦会丢",
 			"divorder": "0"
@@ -60,6 +61,8 @@ var divid = [{
 			"value": "测试数据9",
 			"divorder": "0"
 		}, ];
+</script>
+<script type="text/javascript">
 var xx  = new Xselect(document.getElementById('address'), {
 	name: 'address',
 	// options: [{text: 'a', value: 'b'}],
@@ -87,5 +90,10 @@ var xy = new Xselect(document.getElementById('jobarea'), {
 	    value: 'key',
 	},
 });
+
+// test
+document.getElementById("submit-btn").addEventListener('click', function() {
+	debugger
+})
 </script>
 </html>
