@@ -48,6 +48,7 @@ var Xselect = (function () {
         x_selector_clicked: false, // 当前是否存在select被打开状态
         x_selector_options: null, // 记录当前打开select的唯一标识（id）
         _x_all_event: [], // 全局事件存储，防止多次绑定
+        _cache: {}, // 公共缓存
         // 默认配置
         default: {
             options: [], // options数据
@@ -79,7 +80,6 @@ var Xselect = (function () {
                 } else {
                     if (!this.selectors) this.selectors = {}
                     return this.selectors.showBox = this.children(this.element, name);
-                    // return this.selectors.showBox;
                 }
                 
             },
@@ -106,7 +106,7 @@ var Xselect = (function () {
                 if (this.selectors.actionBox) {
                     return this.selectors.actionBox;
                 } else {
-                    return this.selectors.descBox = this.children(this.getSelectorBox('showBox'), name);
+                    return this.selectors.actionBox = this.children(this.getSelectorBox('showBox'), name);
                 }
             },
         },
@@ -118,8 +118,10 @@ var Xselect = (function () {
         init: function() {
             if (!this.element) return;
             this.createTemplateContainer(); // 初始化容器
-            // debugger
             this.initEvent(); // 初始化相关事件
+            if (this.setting.value) {
+                this.setValue(this.setting.value);
+            }
         },
         // 初始化容器
         createTemplateContainer: function() {
@@ -127,15 +129,18 @@ var Xselect = (function () {
             var setting = this.setting;
             this.addClass('x-select-wrap');
             // 2.创建显示部分
-            var box = this.renderTemplate('x-select-show');
-            var descBox = this.renderTemplate('x-desc', {value: setting.value, placeholder: setting.placeholder, options: setting.options, textAlign: setting.textAlign});
-            var actionBox = this.renderTemplate('x-action')
+            var box = this._renderTemplate('x-select-show');
+            var descBox = this._renderTemplate('x-desc', {value: setting.value, placeholder: setting.placeholder, options: setting.options, textAlign: setting.textAlign});
+            var actionBox = this._renderTemplate('x-action')
             box.append(descBox);
             box.append(actionBox);
+            if (setting.disabled === true) {
+                this.addClass('is-disabled');
+            }
             // 3.options部分
-            var ulBox = this.renderTemplate('x-select-options-ul', {name: setting.name});
+            var ulBox = this._renderTemplate('x-select-options-ul', {name: setting.name});
             if (setting.options.length > 0) {
-                var lisBox = this.renderTemplate('x-select-options-li', {options: setting.options, fieldNames: setting.fieldNames, placeholder: setting.placeholder});
+                var lisBox = this._renderTemplate('x-select-options-li', {options: setting.options, fieldNames: setting.fieldNames, placeholder: setting.placeholder});
                 ulBox.append(lisBox);
             }
             // end
@@ -145,42 +150,45 @@ var Xselect = (function () {
         // 初始化事件
         initEvent: function() {
             // 鼠标点击
+            var setting = this.setting;
             var showBox = this.getSelectorBox('showBox');
             var ulBox = this.getSelectorBox('ulBox');
-            this.on(showBox, 'click', this.bindFn('onClickShowBox'));
-            this.on(ulBox, 'click', this.bindFn('onClickOptionLi'), 'li');
-            this.on(ulBox, 'mouseover', this.bindFn('onMouseoverUlBox'));
-            if (this.setting.textPop === true) {
-                this.on(showBox, 'mouseover', this.bindFn('onMouseoverShowBox'));
-                this.on(showBox, 'mouseout', this.bindFn('onMouseoutShowBox'));
+            this.on(showBox, 'click', this._bindFn('onClickShowBox'));
+            this.on(ulBox, 'click', this._bindFn('onClickOptionLi'), 'li');
+            this.on(ulBox, 'mouseover', this._bindFn('onMouseoverUlBox'));
+            if (setting.textPop === true || setting.allowClear === true) {
+                this.on(showBox, 'mouseenter', this._bindFn('onMouseoverShowBox'));
+                this.on(showBox, 'mouseleave', this._bindFn('onMouseoutShowBox'));
             }
             if (this._x_all_event.indexOf('onClickDom') === -1) {
-                this.on(document, 'click', this.bindFn('onClickDom'));
-                this._x_all_event.push('onClickDom')
+                this.on(document, 'click', this._bindFn('onClickDom'));
+                this._x_all_event.push('onClickDom');
+            }
+            if (setting.allowClear === true) {
+                var actionBox = this.getSelectorBox('actionBox');
+                this.on(actionBox, 'click', this._bindFn('onClickClose'));
+                this.on(actionBox, 'mouseenter', this._bindFn('onMouseOverClose'));
+                this.on(actionBox, 'mouseleave', this._bindFn('onMouseoutClose'));
             }
         },
         // 事件函数(this指向实例;入参tagThis为当前事件对象实际this值)
         _events: {
             // 显示框点击事件
             onClickShowBox: function(tagThis) {
+                console.log('onClickShowBox')
                 // 处理气泡框
                 this._removePop();
                 // 特殊情况1-连续点击两个select
-                // var x_selector_clicked = this._getPrototypeValue('x_selector_clicked');
                 var x_selector_options = this._getPrototypeValue('x_selector_options');
                 if (x_selector_options && this.children(tagThis.parentNode, 'x-select-options-ul').getAttribute('id') !== x_selector_options) {
-                    // this.css($('#'+ x_selector_options), 'display', 'none');
                     this._triggerOptions('close', this.$$('#'+ x_selector_options))
                     this._setPrototypeValue('x_selector_options', null)
-                    // this.x_selector_options = null;
                 }
                 // 特殊情况1-end
                 var ulBox = this.getSelectorBox('ulBox');
                 if (this.css(ulBox, 'display') === 'block') {
-                    // this.css(this.getSelectorBox('ulBox'), 'display', 'none');
                     this._triggerOptions('close', ulBox);
                 } else {
-                    // this.css(this.getSelectorBox('ulBox'), 'display', 'block');
                     this._triggerOptions('open', ulBox);
                     this._setPrototypeValue('x_selector_clicked', true);
                     this._setPrototypeValue('x_selector_options', 'x-'+ this.setting.name +'-options');
@@ -188,55 +196,65 @@ var Xselect = (function () {
                     var curVal = this.getValue() || '';
                     if (curVal !== "") {
                         // 当前已选择值，需要自动定位
-                        // var tagUl = self.parent().children('.x-select-options-ul');
-                        // var tagLi = tagUl.children('.li_'+ tagValue);
                         var tagLi = this.children(ulBox, 'li_'+ curVal)
-                        console.log('tagLi:', tagLi, tagLi.offsetTop)
                         if (tagLi) {
                             this.addClass('x-auto-color', tagLi); // 设置要定位地方的css 
                             ulBox.scrollTop = tagLi.offsetTop; // 定位option
                         }
                     } else {
-                        console.log('重置')
                         ulBox.scrollTop = 0;
                     }
                 }
             },
             // 显示框移入事件（主要应用于气泡文本提示框）
             onMouseoverShowBox: function() {
-                var contentBox = this.getSelectorBox('descBox');
-                // var contentBox = self.children('.x-desc')
-                var contentWidth = contentBox.clientWidth; // $().width()实际width宽度，不包含padding值。contentBox[0].clientWidth-包含padding值;contentBox[0].scrollWidth-包含滚动条值
-                var realWidth = contentBox.scrollWidth; // 文本实际宽度
-                var ulDisplay = this.css(this.getSelectorBox('ulBox'), 'display')
-                if (contentWidth < realWidth && ulDisplay !== 'block') {
-                    var positionTop = contentBox.offsetHeight + 6; // 6为三角形
-                    // 省略号显示。鼠标移入气泡框显示全部
-                    // 位置、样式、是否开放自定义插槽
-                    this.element.append(this.renderTemplate('x-select-pop-box', {positionTop: positionTop, value: contentBox.innerHTML}))
+                var setting = this.setting;
+                //  清除按钮逻辑处理 
+                 if ((setting.allowClear === true) && (this.getValue() !== '')) {
+                    var actionBox = this.getSelectorBox('actionBox');
+                    var icon_close = this._getPublicCache('icon_close');
+                    if (!icon_close) {
+                        icon_close = this._renderTemplate('x-close');
+                        this._setPublicCache('icon_close', icon_close);
+                    }
+                    actionBox.appendChild(icon_close);
+                 }
+                // 气泡框相关处理逻辑-start
+                if (setting.textPop === true) {
+                    var contentBox = this.getSelectorBox('descBox');
+                    var contentWidth = contentBox.clientWidth; // $().width()实际width宽度，不包含padding值。contentBox[0].clientWidth-包含padding值;contentBox[0].scrollWidth-包含滚动条值
+                    var realWidth = contentBox.scrollWidth; // 文本实际宽度
+                    var ulDisplay = this.css(this.getSelectorBox('ulBox'), 'display');
+                    if (contentWidth < realWidth && ulDisplay !== 'block') {
+                        var positionTop = contentBox.offsetHeight + 6; // 6为三角形
+                        // 省略号显示。鼠标移入气泡框显示全部
+                        // 位置、样式、是否开放自定义插槽
+                        this.element.appendChild(this._renderTemplate('x-select-pop-box', {positionTop: positionTop, value: contentBox.innerHTML}))
+                    }
                 }
+                // 气泡框相关处理逻辑-end
             },
             // 显示框移出事件（移除气泡文本框）
             onMouseoutShowBox: function () {
                 this._removePop();
+                this._removeCloseIcon();
             },
             // option-li选中事件
             onClickOptionLi: function(tag) {
                 // 1.绑定value-text值
                 var descBox = this.getSelectorBox('descBox');
                 var tagvalue = tag.getAttribute('value');
-                descBox.innerHTML = tag.innerHTML;
-                if (tagvalue) {
-                    this.removeClass('x-desc-placeholder', descBox);
-                } else {
-                    // 断言-option没有值的是提示语
-                    this.addClass('x-desc-placeholder', descBox);
-                }
-                // descBox.attr('value', tagvalue);
-                descBox.setAttribute('value', tagvalue);
-                this.setValue(tagvalue);
+                // descBox.innerHTML = tag.innerHTML;
+                // if (tagvalue) {
+                //     this.removeClass('x-desc-placeholder', descBox);
+                // } else {
+                //     // 断言-option没有值的是提示语
+                //     this.addClass('x-desc-placeholder', descBox);
+                // }
+                // descBox.setAttribute('value', tagvalue);
+                this.setValue(tagvalue, tag.innerHTML);
                 // 2.隐藏options
-                // this.css(this.getSelectorBox('ulBox'), 'display', 'none');
+                console.log('onClickOptionLi-close')
                 this._triggerOptions('close', this.getSelectorBox('ulBox'));
             },
             // options鼠标移入事件（清除已选择option的标识）
@@ -252,58 +270,120 @@ var Xselect = (function () {
                 var x_selector_options = this._getPrototypeValue('x_selector_options');
                 if (!x_selector_clicked && x_selector_options) {
                     // 当前存在options打开状态
-                    // this.css($('#'+ x_selector_options), 'display', 'none');
+                    console.log("onClickDom-close")
                     this._triggerOptions('close', this.$$('#'+ x_selector_options));
-                    // this.x_selector_options = null;
                     this._setPrototypeValue('x_selector_options', null);
                 }
                 // 由于select处理事件执行顺序在Body之前，此处判断为select点击后需重置掉
                 if (x_selector_clicked === true) {
-                    // this.x_selector_clicked = false;
                     this._setPrototypeValue('x_selector_clicked', false);
                 }
-            }
+            },
+            // icon_close点击事件
+            onClickClose: function(tagThis, e) {
+                var descBox = this.getSelectorBox('descBox');
+                if (this.getValue() !== '') {
+                  this._stopPropagation(e);
+                  this._triggerOptions('close', this.getSelectorBox('ulBox'));
+                  this._removeCloseIcon();
+                }
+                this.setValue('');
+            },
+            // 改变填充色
+            onMouseOverClose: function(tagThis) {
+                var tagBox = this.children(tagThis, 'x-select-close');
+                this.addClass('action-focus', tagBox);
+            },
+            // 鼠标移出
+            onMouseoutClose: function(tagThis) {
+                var tagBox = this.children(tagThis, 'x-select-close');
+                tagBox && this.removeClass('action-focus', tagBox);
+            },
         },
         // 内置事件-代理函数
-        bindFn: function (type) {
+        _bindFn: function (type) {
             var self = this;
-            return function() {
-                self._events[type].call(self, this);
+            return function(e) {
+                if (self.setting.disabled === true) {
+                    return false;
+                }
+                self._events[type].call(self, this, e);
             }
         },
         // 移除气泡文本提示框
         _removePop: function() {
             var popBox = this.children(this.element, 'x-select-pop-box');
-            if (popBox) {
-                popBox.remove();
+            popBox && popBox.remove();
+        },
+        // 移除清除按钮
+        _removeCloseIcon: function() {
+            if (this.setting.allowClear === true) {
+                var actionBox = this.getSelectorBox('actionBox');
+                var icon_close = this.children(actionBox, 'x-select-close');
+                icon_close && icon_close.remove();
             }
         },
         // 打开options框
         _triggerOptions: function(tag, ulBox) {
             var selectBox = ulBox.parentNode;
+            var allowClear = this.setting.allowClear;
             if (tag === 'open') {
                 // 去打开
                 this.css(ulBox, 'display', 'block');
                 // 箭头
                 this.addClass('x-options_opened', selectBox);
+                // (!allowClear && this.getValue() === '') && this.addClass('x-options_opened', selectBox);
             } else {
                 // 去关闭
                 this.css(ulBox, 'display', 'none');
                 this.removeClass('x-options_opened', selectBox);
+                // (!allowClear && this.getValue() === '') && this.removeClass('x-options_opened', selectBox);
             }
-            
+        },
+        // 阻止事件冒泡
+        _stopPropagation: function(e) {
+            if(e.stopPropagation) { //W3C阻止冒泡方法  
+                e.stopPropagation();  
+            } else {  
+                e.cancelBubble = true; //IE阻止冒泡方法  
+            }  
         },
         // 更新protoptye值
         _setPrototypeValue: function (key, val) {
             this.__proto__[key] = val;
+            return this;
         }, 
-        _getPrototypeValue: function (key, val) {
+        _getPrototypeValue: function (key) {
             return this.__proto__[key];
+        },
+        // 更新公共缓存
+        _getPublicCache(key) {
+            return this.__proto__._cache[key];
+        },
+        _setPublicCache(key, val) {
+            var old = this.__proto__._cache[key];
+            (old !== val) && (old = val);
+            return this;
+        },
+        // 通过value匹配描述
+        _matchDescByVal(val) {
+            var setting = this.setting;
+            var list = setting.options;
+            var textField = setting.fieldNames.text;
+            var valueField = setting.fieldNames.value;
+            var tagDesc;
+            for(var i = 0, len = list.length; i < len; i++) {
+                if (list[i][valueField] === val) {
+                    tagDesc = list[i][textField] || '';
+                    break;
+                }
+            }
+            return tagDesc;
         },
         /**
          * 渲染模板
          */
-        renderTemplate: function(type, payload) {
+        _renderTemplate: function(type, payload) {
             var elem;
             switch(type) {
                 case 'x-select-wrap':
@@ -318,40 +398,44 @@ var Xselect = (function () {
                     if (payload.textAlign) {
                         elem.style['text-align'] = payload.textAlign;
                     }
-                    if (payload.value) {
-                        this.setValue(payload.value);
-                        elem.innerHTML = payload.value || '';
-                        elem.setAttribute('value', payload.value);
-                        var list = payload.options;
-                        var textField = this.setting.fieldNames.text;
-                        var valueField = this.setting.fieldNames.value;
-                        for(var i = 0, len = list.length; i < len; i++) {
-                            if (list[i][valueField] === payload.value) {
-                                elem.innerHTML = list[i][textField] || '';
-                                break;
-                            }
-                        }
-                    } else if (payload.placeholder) {
+                    if (payload.placeholder) {
                         elem.innerHTML = payload.placeholder || '';
-                        this.addClass('x-desc-placeholder', elem)
+                        this.addClass('x-desc-placeholder', elem);
                     }
+                    // if (payload.value) {
+                    //     this.setValue(payload.value);
+                    //     elem.innerHTML = payload.value || '';
+                    //     elem.setAttribute('value', payload.value);
+                    //     var list = payload.options;
+                    //     var textField = this.setting.fieldNames.text;
+                    //     var valueField = this.setting.fieldNames.value;
+                    //     for(var i = 0, len = list.length; i < len; i++) {
+                    //         if (list[i][valueField] === payload.value) {
+                    //             elem.innerHTML = list[i][textField] || '';
+                    //             break;
+                    //         }
+                    //     }
+                    // } else if (payload.placeholder) {
+                    //     elem.innerHTML = payload.placeholder || '';
+                    //     this.addClass('x-desc-placeholder', elem)
+                    // }
                     this.addClass('x-desc', elem);
                     break;
                 case "x-action": // 点击区域（options事件）
                     elem = document.createElement("span");
-                    // x-jt_bottom
+                    // 默认添加箭头
                     this.addClass('x-action', elem);
                     elem.style['user-select'] = 'none';
-                    elem.innerHTML = '<svg viewBox="64 64 896 896" data-icon="down" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">'+
+                    elem.innerHTML = '<i class="icon icon_arrow"><svg viewBox="64 64 896 896" data-icon="down" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">'+
                         '<path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z">'+
-                            '</path></svg>';
+                            '</path></svg></i>';
                     break;
                 case "x-close": // 关闭按钮
                     elem = document.createElement("i");
                     this.addClass("icon x-select-close", elem);
-                    elem.innerHTML = '<svg viewBox="64 64 896 896" data-icon="close" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">'+
-                        '<path d="M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 0 0 203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z">'+
-                        '</path></svg>';
+                    //  '<defs><style type="text/css"/></defs>'+
+                    elem.innerHTML = '<svg  class="svg_close" viewBox="0 0 1024 1024" version="1.1" p-id="3147" width="1em" height="1em">'+
+                    '<path d="M512.001 15.678C237.414 15.678 14.82 238.273 14.82 512.86S237.414 1010.04 512 1010.04s497.18-222.593 497.18-497.18S786.589 15.678 512.002 15.678z m213.211 645.937c17.798 17.803 17.798 46.657 0 64.456-17.798 17.797-46.658 17.797-64.456 0L512.001 577.315 363.241 726.07c-17.799 17.797-46.652 17.797-64.45 0-17.804-17.799-17.804-46.653 0-64.456L447.545 512.86 298.79 364.104c-17.803-17.798-17.803-46.657 0-64.455 17.799-17.798 46.652-17.798 64.45 0l148.761 148.755 148.755-148.755c17.798-17.798 46.658-17.798 64.456 0 17.798 17.798 17.798 46.657 0 64.455L576.456 512.86l148.756 148.755z m0 0" p-id="3148"/></svg>';
                     break;
                 case "x-select-options-ul": // options容器
                     elem = document.createElement("ul");
@@ -447,8 +531,27 @@ var Xselect = (function () {
         getValue: function() {
             return this.setting.value;
         },
-        setValue: function(val) {
+        setValue: function(val, text) {
+            var desc;
+            var descBox = this.getSelectorBox('descBox');
+            if (text) {
+                desc = text;
+            } else if (val) {
+                // options匹配
+                desc = this._matchDescByVal(val);
+            } else {
+                desc = "";
+            }
+            if (val) {
+                this.removeClass('x-desc-placeholder', descBox);
+            } else {
+                // 断言-option没有值的是提示语
+                this.addClass('x-desc-placeholder', descBox);
+            }
+            descBox.innerHTML = desc;
+            descBox.setAttribute('value', val);
             this.setting.value = val;
+
             return this;
         },
         // 添加类名
@@ -546,7 +649,6 @@ var Xselect = (function () {
             } else {
                 // set
                 if (typeof extra === 'string') {
-                    // debugger
                     if (Object.prototype.toString.call(elem) === "[object NodeList]") {
                         for(var i = 0, len = elem.length; i < len; i++) {
                             elem[i].style[name] = extra;
@@ -591,10 +693,10 @@ var Xselect = (function () {
         },
 
     }
-    function $(selector) {
-        return document.querySelectorAll(selector)
-    }
     function getClass( elem ) {
+        if (elem === undefined) {
+            return "";
+        }
         return elem.getAttribute && elem.getAttribute( "class" ) || "";
     }
     function stripAndCollapse( value ) {

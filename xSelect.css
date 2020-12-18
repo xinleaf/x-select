@@ -3,39 +3,76 @@
   display: inline-block;
   width: 182px;
   height: 34px;
-  border: 2px solid #959595;
+  border: 1px solid #959595;
   border-radius: 17px;
   position: relative;
 }
 /* 废弃 */
-.x-select-wrap .x-jt_bottom{
+/* .x-select-wrap .x-jt_bottom{
   width: 17px;
   height: 13px;
   background: url(./select_jt.jpg) 0 0 no-repeat no-repeat;
   position: absolute;
   top: 33%;
   right: 8%;
-}
+} */
 .x-select-wrap .x-action{
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
 	color: #959595;
-	-webkit-transition: -webkit-transform 0.3s linear;
-	transition: transform 0.3s linear;
-	/* transform-origin: center; */
-	transform-origin: center 0.3em;
 }
-.x-select-wrap.x-options_opened .x-action{
+/* .x-select-wrap .icon_arrow */
+.x-select-wrap .icon_arrow {
+  display: inline-block;
+  pointer-events: all;
+  -webkit-transition: -webkit-transform 0.3s linear;
+	transition: transform 0.3s linear;
+  /*transform-origin: center; */
+	transform-origin: center 0.5em;
+}
+.x-select-wrap .x-select-close{
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  position: absolute;
+  background: #fff;
+  top: 0;
+  left: 0;
+}
+.x-select-close .svg_close{
+  fill: #cdcdcd;
+}
+.x-select-close.action-focus .svg_close{
+  fill: #000;
+}
+/* .x-select-wrap.x-options_opened .icon_arrow */
+.x-select-wrap.x-options_opened .icon_arrow{
 	-webkit-transform: rotate(180deg);
 	transform: rotate(180deg);
 	-webkit-transition: -webkit-transform 0.3s linear;
 	transition: transform 0.3s linear;
-	/* transform-origin: center; */
-	transform-origin: center 0.3em;
+	 /*transform-origin: center; */
+	transform-origin: center 0.5em;
 }
 .x-select-show{
-	cursor: pointer;
+  cursor: pointer;
+  height: 34px;
+}
+/*select禁用状态*/
+.x-select-wrap.is-disabled{
+  /* cursor: not-allowed; */
+  background-color: #f5f7fa;
+  border-color: #e4e7ed;
+  color: #c0c4cc;
+}
+.x-select-wrap.is-disabled .x-select-show{
+  cursor: not-allowed;
+  user-select: none;
+  color: #c0c4cc;
+}
+.x-select-wrap.is-disabled .x-action{
+  color: #c0c4cc;
 }
 .x-select-wrap .x-desc{
   width: 80%;
