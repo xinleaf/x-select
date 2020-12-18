@@ -22,7 +22,8 @@ var xx = new Xselect(document.getElementById(''), options);
 |        textAlign         |        [String]显示描述的对齐方式；left,right,center         |      |          "center"           |
 |         textPop          |      [Boolean]当选择值描述过长时是否显示气泡文本提示框       |      |            false            |
 | textPopOptions（待实现） |   [Object]气泡文本提示框的相关配置；当textPop为true时生效    |      |    {placement: “bottom”}    |
-|                          |                                                              |      |                             |
+|        allowClear        |                       是否存在删除icon                       |      |            false            |
+|         disabled         |                           是否禁用                           |      |            false            |
 
 ##### 实例相关方法
 
